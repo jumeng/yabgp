@@ -267,6 +267,24 @@ class MpReachNLRI(Attribute):
                         reason='failed to construct attributes: %s' % e,
                         data=value
                     )
+            elif safi == safn.SAFNUM_SRTE:  # BGP SR TE Policy
+                try:
+                    try:
+                        nexthop = netaddr.IPAddress(value['nexthop']).packed
+                    except netaddr.core.AddrFormatError:
+                        nexthop = ''
+                    nlri_hex = b''
+                    nlri_hex += IPv4SRTE.construct(data=value['nlri'])
+                    if nlri_hex:
+                        attr_value = struct.pack('!H', afi) + struct.pack('!B', safi) + \
+                            struct.pack('!B', len(nexthop)) + nexthop + b'\x00' + nlri_hex
+                        return struct.pack('!B', cls.FLAG) + struct.pack('!B', cls.ID) \
+                            + struct.pack('!B', len(attr_value)) + attr_value
+                except Exception as e:
+                    raise excep.ConstructAttributeFailed(
+                        reason='failed to construct attributes: %s' % e,
+                        data=value
+                    )
             elif safi == safn.SAFNUM_MPLS_LABEL:
                 try:
                     try:
