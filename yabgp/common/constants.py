@@ -1,4 +1,4 @@
-# Copyright 2015 Cisco Systems, Inc.
+# Copyright 2015-2017 Cisco Systems, Inc.
 # All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -106,6 +106,19 @@ BGP_TUNNEL_ENCAPS_MPLS = 10
 BGP_TUNNEL_ENCAPS_MPLS_IN_GRE = 11
 BGP_TUNNEL_ENCAPS_VXLAN_GRE = 12
 BGP_TUNNEL_ENCAPS_MPLS_IN_UDP = 13
+BGP_TUNNEL_ENCAPS_IPV6_TUNNEL = 14
+BGP_TUNNEL_ENCAPS_SR_TE_POLICY_TYPE = 15
+BGP_TUNNEL_ENCAPS_BARE = 16
+
+# Segment Sub-TLV type
+BGP_SRTE_SEGMENT_SUBTLV_MPLS = 1
+BGP_SRTE_SEGMENT_SUBTLV_IPV6 = 2
+BGP_SRTE_SEGMENT_SUBTLV_IPV4_SID = 3
+BGP_SRTE_SEGMENT_SUBTLV_IPV6_SID = 4
+BGP_SRTE_SEGMENT_SUBTLV_IPV4_INDEX_SID = 5
+BGP_SRTE_SEGMENT_SUBTLV_IPV4_ADDR_SID = 6
+BGP_SRTE_SEGMENT_SUBTLV_IPV6_INDEX_SID = 7
+BGP_SRTE_SEGMENT_SUBTLV_IPV6_ADDR_SID = 8
 
 #  VPN Route Target  #
 BGP_EXT_COM_RT_0 = 0x0002  # Route Target,Format AS(2bytes):AN(4bytes)
@@ -115,7 +128,7 @@ BGP_EXT_COM_RT_2 = 0x0202  # Route Target,Format AS(4bytes):AN(2bytes)
 # Route Origin (SOO site of Origin)
 BGP_EXT_COM_RO_0 = 0x0003  # Route Origin,Format AS(2bytes):AN(4bytes)
 BGP_EXT_COM_RO_1 = 0x0103  # Route Origin,Format IP address:AN(2bytes)
-BGP_EXT_COM_RO_2 = 0x0203  # Route Origin,Format AS(2bytes):AN(4bytes)
+BGP_EXT_COM_RO_2 = 0x0203  # Route Origin,Format AS(4bytes):AN(2bytes)
 
 # BGP Flow Spec
 BGP_EXT_REDIRECT_NH = 0x0800  # redirect to ipv4/v6 nexthop
@@ -145,6 +158,21 @@ BGP_EXT_COM_LINK_BW = 0x4004
 # Unkonw
 BGP_EXT_COM_UNKNOW = 0x0000
 
+BGP_EXT_COM_DICT = {
+    'redirect-vrf': 32776,  # redirect 6-byte Route Target
+    'traffic-marking-dscp': 32777,  # traffic-marking DSCP value
+    'traffic-rate': 32774,  # traffic-rate 2-byte as#, 4-byte float
+    'color': 779,  # Color
+    'encapsulation': 780,  # BGP_EXT_COM_ENCAP = 0x030c
+    'es-import': 1538,  # ES Import
+    'router-mac': 1539  # EVPN Router MAC Extended Community
+}
+
+BGP_EXT_COM_DICT_1 = {
+    'esi-label': 1537,  # ESI MPLS Label
+    'mac-mobility': 1536,  # Mac Mobility
+}
+
 # route distinguisher type
 BGP_ROUTE_DISTINGUISHER_TYPE_0 = 0x0000
 BGP_ROUTE_DISTINGUISHER_TYPE_1 = 0x0001
@@ -173,6 +201,15 @@ BGPNLRI_FSPEC_TCP_FLAGS = 9  # RFC 5575
 BGPNLRI_FSPEC_PCK_LEN = 10  # RFC 5575
 BGPNLRI_FSPEC_DSCP = 11  # RFC 5575
 BGPNLRI_FSPEC_FRAGMENT = 12  # RFC 5575
+
+# Sub-TLVs as defined in SR TE Policy draft
+BGPSUB_TLV_PREFERENCE = 6
+BGPSUB_TLV_BINDGINGSID = 7
+BGPSUB_TLV_SIDLIST = 128
+
+# Sub-TLVs as defined in SR TE Policy draft and used in BGPSUB_TLV_SIDLIST
+BGPSUB_TLV_WEIGHTED = 9
+BGPSUB_TLV_SID = 1
 
 # NLRI type as define in BGP EVPN
 BGPNLRI_EVPN_ETHERNET_AUTO_DISCOVERY = 1
@@ -214,7 +251,8 @@ AFI_SAFI_DICT = {
     (1, 128): 'vpnv4',
     (2, 128): 'vpnv6',
     (25, 70): 'evpn',
-    (16388, 71): 'bgpls'
+    (16388, 71): 'bgpls',
+    (1, 73): 'ipv4_srte'
 }
 AFI_SAFI_STR_DICT = {
     'ipv6': (2, 1),
@@ -225,7 +263,8 @@ AFI_SAFI_STR_DICT = {
     'vpnv4': (1, 128),
     'vpnv6': (2, 128),
     'evpn': (25, 70),
-    'bgpls': (16388, 71)
+    'bgpls': (16388, 71),
+    'ipv4_srte': (1, 73)
 }
 
 ADD_PATH_ACT_DICT = {

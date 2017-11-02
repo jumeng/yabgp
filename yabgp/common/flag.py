@@ -1,7 +1,7 @@
-# Copyright 2015 Cisco Systems, Inc.
+# Copyright 2015-2017 Cisco Systems, Inc.
 # All rights reserved.
 #
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
 #
@@ -13,14 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""start service"""
 
-from __future__ import print_function
-from yabgp.agent import prepare_service
+class ByteFlag(int):
 
+    FLAGS = ['']
 
-def main():
-    try:
-        prepare_service()
-    except Exception as e:
-        print(e)
+    def dict(self):
+        bit_list = []
+        for i in range(8):
+            bit_list.append((self >> i) & 1)
+        bit_list.reverse()
+        return dict(zip(self.FLAGS, bit_list[:len(self.FLAGS)]))

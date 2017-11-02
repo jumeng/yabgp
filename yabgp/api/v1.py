@@ -24,6 +24,7 @@ import flask
 from oslo_config import cfg
 
 from yabgp.api import utils as api_utils
+from yabgp.common import constants as bgp_cons
 
 LOG = logging.getLogger(__name__)
 blueprint = Blueprint('v1', __name__)
@@ -114,6 +115,80 @@ def send_update_message(peer_ip):
         if 5 not in attr:
             # default local preference
             attr[5] = 100
+        if 16 in attr:
+            # extended community recombine
+            ext_community = []
+            for ext_com in attr[16]:
+                key, value = ext_com.split(':', 1)
+                if key.strip().lower() == 'route-target':
+                    values = value.strip().split(',')
+                    for vau in values:
+                        if '.' in vau.strip().split(':')[0]:
+                            ext_community.append([258, vau.strip()])
+                        else:
+                            res = api_utils.get_peer_conf_and_state(peer_ip)
+                            if res['peer']['capability']['remote']:
+                                four_bytes_as = res['peer']['capability']['remote']['four_bytes_as']
+                            else:
+                                return flask.jsonify({
+                                    'status': False,
+                                    'code': 'please check peer state'
+                                })
+                            nums = vau.strip().split(':', 1)
+                            if int(nums[1].strip()) <= 65535 and four_bytes_as:
+                                ext_community.append([514, vau.strip()])
+                            elif not four_bytes_as and int(nums[0].strip()) > 65535:
+                                return flask.jsonify({
+                                    'status': False,
+                                    'code': 'peer not support as num of greater than 65535'
+                                })
+                            else:
+                                ext_community.append([2, vau.strip()])
+                elif key.strip().lower() == 'route-origin':
+                    values = value.strip().split(',')
+                    for vau in values:
+                        if '.' in vau.strip().split(':')[0]:
+                            ext_community.append([259, vau.strip()])
+                        else:
+                            res = api_utils.get_peer_conf_and_state(peer_ip)
+                            if res['peer']['capability']['remote']:
+                                four_bytes_as = res['peer']['capability']['remote']['four_bytes_as']
+                            else:
+                                return flask.jsonify({
+                                    'status': False,
+                                    'code': 'please check peer state'
+                                })
+                            nums = vau.strip().split(':', 1)
+                            if int(nums[1].strip()) <= 65535 and four_bytes_as:
+                                ext_community.append([515, vau.strip()])
+                            elif not four_bytes_as and int(nums[0].strip()) > 65535:
+                                return flask.jsonify({
+                                    'status': False,
+                                    'code': 'peer not support as num of greater than 65535'
+                                })
+                            else:
+                                ext_community.append([3, vau.strip()])
+                elif key.strip().lower() == 'redirect-nexthop':
+                    ext_community.append([2048, '0.0.0.0', int(value.strip())])
+                elif bgp_cons.BGP_EXT_COM_DICT_1.get(key.strip().lower()):
+                    key_num = bgp_cons.BGP_EXT_COM_DICT_1.get(key.strip().lower())
+                    values = value.strip().split(':', 1)
+                    ext_community.append([key_num, int(values[0]), int(values[1])])
+                else:
+                    key_num = bgp_cons.BGP_EXT_COM_DICT.get(key.strip().lower())
+                    if key_num:
+                        values = value.strip().split(',')
+                        for vau in values:
+                            if key_num == 32777:
+                                ext_community.append([key_num, int(vau.strip())])
+                            else:
+                                ext_community.append([key_num, vau.strip()])
+                    else:
+                        return flask.jsonify({
+                            'status': False,
+                            'code': 'unexpected extended community "%s", please check your post data' % key
+                        })
+            attr[16] = ext_community
     if (attr and nlri) or withdraw:
         return flask.jsonify(api_utils.send_update(peer_ip, attr, nlri, withdraw))
     elif 14 in attr or 15 in attr:

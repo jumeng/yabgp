@@ -185,6 +185,7 @@ The attribute we supported now is: (reference by `IANA <http://www.iana.org/assi
         "17": "AS4_PATH",
         "18": "AS4_AGGREGATOR",
         "22": "PMSI_TUNNEL",
+        "23": "TUNNEL_ENCAPSULATIONS",
         "128": "ATTR_SET"
     }
 
@@ -356,9 +357,10 @@ Value     Meaning
 ========= ===
 [1, 128]  IPv4 MPLSVPN
 [1, 133]  IPv4 Flowspec
+[1, 73]   IPv4 Sr-policy
 [2, 1]    IPv6 Unicast
 [2, 128]  IPv6 MPLSVPN
-[25, 70]  EVPN
+[25, 70]  L2VPN EVPN
 ...       ...
 ========= ===
 
@@ -390,10 +392,111 @@ IPv4 FlowSpec
             "14": {
                 "afi_safi": [1, 133],
                 "nexthop": "",
-                "nlri": [{"1": "192.88.2.3/24", "2": "192.89.1.3/24"}]
+                "nlri": [
+                    {"1": "192.88.2.3/24", "2": "192.89.1.3/24", "5": "=80|=8080"},
+                    {"1": "192.88.5.3/24", "2": "192.89.2.3/24", "5": "=80|=8080"}
+                ]
             }
         }
     }
+
+The nlri contains filters and values, and the supported filters are:
+
+.. code-block:: python
+
+    BGPNLRI_FSPEC_DST_PFIX = 1  # RFC 5575
+    BGPNLRI_FSPEC_SRC_PFIX = 2  # RFC 5575
+    BGPNLRI_FSPEC_IP_PROTO = 3  # RFC 5575
+    BGPNLRI_FSPEC_PORT = 4  # RFC 5575
+    BGPNLRI_FSPEC_DST_PORT = 5  # RFC 5575
+    BGPNLRI_FSPEC_SRC_PORT = 6  # RFC 5575
+    BGPNLRI_FSPEC_ICMP_TP = 7  # RFC 5575
+    BGPNLRI_FSPEC_ICMP_CD = 8  # RFC 5575
+    BGPNLRI_FSPEC_TCP_FLAGS = 9  # RFC 5575
+    BGPNLRI_FSPEC_PCK_LEN = 10  # RFC 5575
+    BGPNLRI_FSPEC_DSCP = 11  # RFC 5575
+    BGPNLRI_FSPEC_FRAGMENT = 12  # RFC 5575
+
+The value format of each filter are: `BGPNLRI_FSPEC_DST_PFIX` and `BGPNLRI_FSPEC_SRC_PFIX` are prefixes format,
+others are integers, but in string format like:
+
+`=80` means equal to `80`
+
+`=80|=8080` means equal to 80 or 8080.
+
+`>=80|<40` means geater than 80 or equal to 80 or less than 40
+
+IPv4 Sr-policy
+""""""""""""""
+
+.. code-block:: json
+
+    {
+        "attr": {
+            "8": ["NO_ADVERTISE"],
+            "14": {
+                "afi_safi": [1, 73],
+                "nexthop": "192.168.5.5",
+                "nlri": {
+                    "distinguisher": 0,
+                    "color": 10,
+                    "endpoint": "192.168.76.1"
+                }
+            },
+            "16": ["route-target:10.75.195.199:00"],
+            "23": {
+                "6": 100,
+                "7": 25102,
+                "128": [
+                    {
+                        "9": 10,
+                        "1": [
+                            {
+                                "1": {
+                                    "label": 2000,
+                                    "TC": 0,
+                                    "S": 0,
+                                    "TTL": 255
+                                }
+                            },
+                            {
+                                "3": {
+                                    "node": "10.1.1.1",
+                                    "SID": {
+                                        "label": 3000,
+                                        "TC": 0,
+                                        "S": 0,
+                                        "TTL": 255
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+
+attribute explaination(only for this format):
+::
+
+    "8": Optionally assign
+    "14": Multiprotocol Reacable Attribute
+    "16": Route Target Extended Community
+    "23": Tunnel Encapsulation Attribute
+        "6": Preference
+        "7": Binding SID
+        "128": Multiple segement lists
+            "9": Weighted
+            "1": Segement list
+                "1": Segement type 1
+                    "label": Value of MPLS Label
+                    "TC": Assign optionally, default value is 0
+                    "S": Assign optionally, default value is 0
+                    "TTL": Assign optionally, default value is 255
+                "3": Segement type 3
+                    "node": An Ipv4 Address
+                    "SID": Assign Optionally, inner structure similar to Segement type 1
 
 IPv6 Unicast
 """"""""""""
@@ -437,7 +540,7 @@ IPv6 MPLSVPN
                     }
                 ]
             },
-            "16": [[2, "100:12"]]
+            "16": ["route-target:100:12"]
             }
     }
 
@@ -500,7 +603,28 @@ IPv4 FlowSpec
         "attr":{
             "15": {
                 "afi_safi": [1, 133],
-                "withdraw": [{"1": "192.88.2.3/24", "2": "192.89.1.3/24"}]
+                "withdraw": [
+                    {"1": "192.88.2.3/24", "2": "192.89.1.3/24", "5": "=80|=8080"},
+                    {"1": "192.16.0.0/8", "6": "=8080"}
+                ]
+            }
+        }
+    }
+
+IPv4 Sr-policy
+""""""""""""""
+
+.. code-block:: json
+
+    {
+        "attr":{
+            "15": {
+                "afi_safi": [1, 73],
+                "withdraw": {
+                    "distinguisher": 0,
+                    "color": 10,
+                    "endpoint": "192.168.76.1"
+                }
             }
         }
     }
@@ -570,40 +694,26 @@ Extended community we supported:
 .. code-block:: Python
 
     #  VPN Route Target  #
-    BGP_EXT_COM_RT_0 = 0x0002  # Route Target,Format AS(2bytes):AN(4bytes)
-    BGP_EXT_COM_RT_1 = 0x0102  # Route Target,Format IPv4 address(4bytes):AN(2bytes)
-    BGP_EXT_COM_RT_2 = 0x0202  # Route Target,Format AS(4bytes):AN(2bytes)
+    route-target  # Route Target
 
     # Route Origin (SOO site of Origin)
-    BGP_EXT_COM_RO_0 = 0x0003  # Route Origin,Format AS(2bytes):AN(4bytes)
-    BGP_EXT_COM_RO_1 = 0x0103  # Route Origin,Format IP address:AN(2bytes)
-    BGP_EXT_COM_RO_2 = 0x0203  # Route Origin,Format AS(2bytes):AN(4bytes)
+    route-origin  # Route Origin
 
     # BGP Flow Spec
-    BGP_EXT_REDIRECT_NH = 0x0800  # redirect to ipv4/v6 nexthop
-    BGP_EXT_TRA_RATE = 0x8006  # traffic-rate 2-byte as#, 4-byte float
-    BGP_EXT_TRA_ACTION = 0x8007  # traffic-action bitmask
-    BGP_EXT_REDIRECT_VRF = 0x8008  # redirect 6-byte Route Target
-    BGP_EXT_TRA_MARK = 0x8009  # traffic-marking DSCP value
+    redirect-nexthop  # redirect to ipv4/v6 nexthop
+    traffic-rate  # traffic-rate
+    redirect-vrf  # redirect Route Target
+    traffic-marking-dscp  # traffic-marking DSCP value
 
     # Transitive Opaque
-    BGP_EXT_COM_OSPF_ROUTE_TYPE = 0x0306  # OSPF Route Type
-    BGP_EXT_COM_COLOR = 0x030b  # Color
-    BGP_EXT_COM_ENCAP = 0x030c  # BGP_EXT_COM_ENCAP = 0x030c
-    BGP_EXT_COM_DEFAULT_GATEWAY = 0x030d  # Default Gateway
+    color  # Color
+    encapsulation  # encapsulation
 
     # BGP EVPN
-    BGP_EXT_COM_EVPN_MAC_MOBIL = 0x0600  # Mac Mobility
-    BGP_EXT_COM_EVPN_ESI_MPLS_LABEL = 0x0601  # ESI MPLS Label
-    BGP_EXT_COM_EVPN_ES_IMPORT = 0x0602  # ES Import
-    BGP_EXT_COM_EVPN_ROUTE_MAC = 0x0603  # EVPN Router MAC Extended Community
-
-    # BGP cost cummunity
-    BGP_EXT_COM_COST = 0x4301
-
-    # BGP link bandwith
-    BGP_EXT_COM_LINK_BW = 0x4004
-
+    mac-mobility  # Mac Mobility
+    esi-label  # ESI MPLS Label
+    es-import  # ES Import
+    router-mac  # EVPN Router MAC
 
 
 14. AS4_PATH
